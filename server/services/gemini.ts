@@ -26,6 +26,7 @@ export async function synthesizeProfile(
   }
 
   try {
+    console.log("Gemini API key available, attempting synthesis...");
     const ai = new GoogleGenAI({ apiKey });
 
     const prompt = `Analyze the following data about a creative professional and synthesize a unified profile.
@@ -79,23 +80,30 @@ Please synthesize this information and respond with a JSON object containing:
 If you cannot determine certain information, use reasonable defaults and lower the confidence score.
 Respond ONLY with valid JSON, no markdown formatting.`;
 
+    console.log("Calling Gemini API with model gemini-2.0-flash...");
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       contents: prompt,
     });
+    console.log("Gemini API responded");
 
     // Extract text from response - handle both direct text property and candidates structure
     let text = "";
     if (typeof response.text === "string") {
       text = response.text;
+      console.log("Extracted text from response.text property");
     } else if (response.candidates && response.candidates[0]?.content?.parts?.[0]?.text) {
       text = response.candidates[0].content.parts[0].text;
+      console.log("Extracted text from response.candidates structure");
     }
     
     if (!text) {
       console.warn("Gemini returned empty response, using fallback");
+      console.log("Response structure:", JSON.stringify(response, null, 2).substring(0, 500));
       return createFallbackProfile(crawledData, enrichmentData);
     }
+    
+    console.log("Gemini synthesis successful, parsing JSON response...");
     
     // Clean up the response - remove markdown code blocks if present
     let jsonText = text.trim();
@@ -116,6 +124,10 @@ Respond ONLY with valid JSON, no markdown formatting.`;
     return normalizeProfile(parsed, crawledData);
   } catch (error) {
     console.error("Gemini synthesis error:", error);
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
     return createFallbackProfile(crawledData, enrichmentData);
   }
 }
