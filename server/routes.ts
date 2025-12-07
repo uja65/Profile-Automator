@@ -7,6 +7,7 @@ import type { Profile } from "@shared/schema";
 import { crawlUrl, normalizeUrl, hashUrl } from "./services/crawler";
 import { searchWithPerplexity } from "./services/perplexity";
 import { synthesizeProfile } from "./services/gemini";
+import { enrichProjectsWithPosters } from "./services/omdb";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -51,7 +52,11 @@ export async function registerRoutes(
       console.log("Synthesizing with Gemini...");
       const synthesisResult = await synthesizeProfile(crawledData, enrichmentData);
 
-      // Step 4: Build the final profile
+      // Step 4: Enrich projects with OMDB posters
+      console.log("Enriching with OMDB posters...");
+      const enrichedProjects = await enrichProjectsWithPosters(synthesisResult.projects);
+
+      // Step 5: Build the final profile
       const profile: Profile = {
         id: randomUUID(),
         urlHash,
@@ -60,17 +65,14 @@ export async function registerRoutes(
         role: synthesisResult.role,
         bio: synthesisResult.bio,
         imageUrl: crawledData.images[0],
-        projectCount: synthesisResult.projects.length,
+        projectCount: enrichedProjects.length,
         yearsActive: synthesisResult.yearsActive,
         platforms: synthesisResult.platforms,
         socialLinks: crawledData.socialLinks.length > 0 
           ? crawledData.socialLinks 
           : synthesisResult.platforms.map(p => ({ platform: p, url: normalizedUrl })),
         confidence: synthesisResult.confidence,
-        projects: synthesisResult.projects.map((p, i) => ({
-          ...p,
-          coverImage: crawledData.images[i + 1] || undefined,
-        })),
+        projects: enrichedProjects,
         media: synthesisResult.media,
         crawledData: {
           title: crawledData.title,
