@@ -51,10 +51,10 @@ export default function URLInputForm({ onSubmit, isLoading = false }: URLInputFo
           <Sparkles className="w-6 h-6 text-primary" />
         </div>
         <CardTitle className="text-2xl md:text-3xl font-display">
-          Create Your Auto Profile
+          Enhanced Profile Analysis
         </CardTitle>
         <CardDescription className="text-base">
-          Enter any personal URL and our AI will generate a comprehensive creative profile
+          Transform your portfolio into a stunning professional profile
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -104,11 +104,6 @@ export default function URLInputForm({ onSubmit, isLoading = false }: URLInputFo
           </Button>
         </form>
 
-        <div className="mt-6 pt-6 border-t">
-          <p className="text-xs text-center text-muted-foreground">
-            Supported platforms: IMDb, YouTube, Vimeo, LinkedIn, Facebook, TMDB, and personal websites
-          </p>
-        </div>
       </CardContent>
     </Card>
   );
