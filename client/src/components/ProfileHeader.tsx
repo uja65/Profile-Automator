@@ -1,7 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import PlatformBadge, { type Platform } from "./PlatformBadge";
-import ConfidenceIndicator from "./ConfidenceIndicator";
 import { Film, Calendar, Globe } from "lucide-react";
 
 interface SocialLink {
@@ -18,7 +16,6 @@ interface ProfileHeaderProps {
   yearsActive: string;
   platforms: Platform[];
   socialLinks: SocialLink[];
-  confidence: number;
 }
 
 export default function ProfileHeader({
@@ -30,7 +27,6 @@ export default function ProfileHeader({
   yearsActive,
   platforms,
   socialLinks,
-  confidence,
 }: ProfileHeaderProps) {
   const initials = name
     .split(" ")
@@ -91,11 +87,6 @@ export default function ProfileHeader({
                   <PlatformBadge platform={link.platform} />
                 </a>
               ))}
-            </div>
-
-            <div className="flex items-center justify-center md:justify-start gap-2">
-              <span className="text-xs text-muted-foreground">AI Confidence:</span>
-              <ConfidenceIndicator score={confidence} />
             </div>
 
             <p 

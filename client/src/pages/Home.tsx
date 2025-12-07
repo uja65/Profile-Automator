@@ -90,7 +90,7 @@ export default function Home() {
             data-testid="button-logo"
           >
             <Sparkles className="w-5 h-5 text-primary" />
-            Auto Profile
+            Tabb Profile
           </button>
           
           <div className="flex items-center gap-2">
@@ -154,7 +154,6 @@ export default function Home() {
               yearsActive={profile.yearsActive}
               platforms={profile.platforms}
               socialLinks={profile.socialLinks}
-              confidence={profile.confidence}
             />
             
             <div className="border-t" />
@@ -175,7 +174,6 @@ export default function Home() {
             <div className="py-12">
               <div className="max-w-7xl mx-auto px-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Profile generated with AI confidence score of {Math.round(profile.confidence * 100)}%. 
                   Data sourced from {profile.platforms.join(", ")}.
                 </p>
               </div>
