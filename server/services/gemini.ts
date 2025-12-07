@@ -43,6 +43,7 @@ Description: ${crawledData.description || "None"}
 Text Content: ${crawledData.textContent.slice(0, 3000)}
 Social Links: ${JSON.stringify(crawledData.socialLinks)}
 Video URLs found on page: ${JSON.stringify(crawledData.videoUrls || [])}
+Images found on page: ${JSON.stringify(crawledData.images.slice(0, 15))}
 
 ADDITIONAL RESEARCH DATA:
 ${enrichmentData.additionalInfo.slice(0, 2000)}
@@ -70,7 +71,8 @@ Please synthesize this information and respond with a JSON object containing:
       "collaborators": ["name1", "name2"],
       "hasVideo": true/false,
       "description": "Brief description",
-      "videoUrl": "https://youtube.com/watch?v=... or https://vimeo.com/... (if available)"
+      "videoUrl": "https://youtube.com/watch?v=... or https://vimeo.com/... (if available)",
+      "coverImage": "URL from the images list that best matches this project (if available)"
     }
   ],
   "media": [
@@ -182,7 +184,7 @@ function normalizeProfile(parsed: any, crawledData: CrawledData): SynthesisResul
     collaborators: Array.isArray(p.collaborators) ? p.collaborators.map(String) : [],
     hasVideo: Boolean(p.hasVideo || p.videoUrl),
     description: p.description ? String(p.description) : undefined,
-    coverImage: undefined,
+    coverImage: p.coverImage ? String(p.coverImage) : undefined,
     videoUrl: p.videoUrl ? String(p.videoUrl) : undefined,
   }));
 
