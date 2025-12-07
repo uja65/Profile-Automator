@@ -51,7 +51,7 @@ Format the response as structured information.`;
     const response = await axios.post<PerplexityResponse>(
       "https://api.perplexity.ai/chat/completions",
       {
-        model: "llama-3.1-sonar-small-128k-online",
+        model: "sonar",
         messages: [
           {
             role: "system",
