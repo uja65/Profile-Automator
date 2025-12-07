@@ -116,9 +116,6 @@ export default function Home() {
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-display tracking-tight mb-4">
                 AI-Powered Profile Generator
               </h1>
-              <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-                Transform any creator's online presence into a verified, visually engaging portfolio
-              </p>
             </div>
             <URLInputForm onSubmit={handleSubmit} isLoading={generateMutation.isPending} />
           </div>
