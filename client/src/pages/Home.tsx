@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import URLInputForm from "@/components/URLInputForm";
 import ProfileHeader from "@/components/ProfileHeader";
 import ProjectGrid from "@/components/ProjectGrid";
@@ -6,134 +7,60 @@ import MediaGallery from "@/components/MediaGallery";
 import LoadingState from "@/components/LoadingState";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { ArrowUp, Sparkles } from "lucide-react";
-import type { Platform } from "@/components/PlatformBadge";
+import { ArrowUp, Sparkles, AlertCircle } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import type { Profile } from "@shared/schema";
 
-// todo: remove mock functionality - this is demo data
-const mockProfileData = {
-  name: "Christopher Nolan",
-  role: "Film Director, Producer, Screenwriter",
-  bio: "Christopher Edward Nolan is a British-American filmmaker known for his distinctive storytelling approach and visual style. His films have grossed over $5 billion worldwide and have received numerous accolades, including Academy Awards for Best Director and Best Picture for Oppenheimer (2023). Known for exploring complex themes of time, memory, and identity through intricate narrative structures.",
-  imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
-  projectCount: 12,
-  yearsActive: "1998 - Present",
-  platforms: ["imdb", "youtube", "vimeo"] as Platform[],
-  socialLinks: [
-    { platform: "imdb" as Platform, url: "https://imdb.com" },
-    { platform: "youtube" as Platform, url: "https://youtube.com" },
-    { platform: "linkedin" as Platform, url: "https://linkedin.com" },
-  ],
-  confidence: 0.94,
-};
-
-// todo: remove mock functionality
-const mockProjects = [
-  {
-    id: "1",
-    title: "Oppenheimer",
-    year: "2023",
-    role: "Director, Writer, Producer",
-    coverImage: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=600&h=340&fit=crop",
-    platform: "imdb" as Platform,
-    collaborators: ["Cillian Murphy", "Emily Blunt", "Robert Downey Jr."],
-    hasVideo: true,
-  },
-  {
-    id: "2",
-    title: "Tenet",
-    year: "2020",
-    role: "Director, Writer, Producer",
-    coverImage: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&h=340&fit=crop",
-    platform: "tmdb" as Platform,
-    collaborators: ["John David Washington", "Elizabeth Debicki"],
-    hasVideo: true,
-  },
-  {
-    id: "3",
-    title: "Dunkirk",
-    year: "2017",
-    role: "Director, Writer, Producer",
-    coverImage: "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=600&h=340&fit=crop",
-    platform: "youtube" as Platform,
-    collaborators: ["Fionn Whitehead", "Tom Hardy"],
-    hasVideo: false,
-  },
-  {
-    id: "4",
-    title: "Interstellar",
-    year: "2014",
-    role: "Director, Writer, Producer",
-    coverImage: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=600&h=340&fit=crop",
-    platform: "imdb" as Platform,
-    collaborators: ["Matthew McConaughey", "Anne Hathaway"],
-    hasVideo: true,
-  },
-  {
-    id: "5",
-    title: "The Dark Knight",
-    year: "2008",
-    role: "Director, Writer",
-    coverImage: "https://images.unsplash.com/photo-1509347528160-9a9e33742cdb?w=600&h=340&fit=crop",
-    platform: "imdb" as Platform,
-    collaborators: ["Christian Bale", "Heath Ledger"],
-    hasVideo: true,
-  },
-  {
-    id: "6",
-    title: "Inception",
-    year: "2010",
-    role: "Director, Writer, Producer",
-    coverImage: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&h=340&fit=crop",
-    platform: "vimeo" as Platform,
-    collaborators: ["Leonardo DiCaprio", "Marion Cotillard"],
-    hasVideo: true,
-  },
-];
-
-// todo: remove mock functionality
-const mockMedia = [
-  {
-    id: "1",
-    url: "https://www.youtube.com/watch?v=uYPbbksJxIg",
-    title: "Oppenheimer - Official Trailer",
-    description: "The story of American scientist J. Robert Oppenheimer and his role in the development of the atomic bomb.",
-    platform: "youtube" as Platform,
-    thumbnail: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=600&h=340&fit=crop",
-  },
-  {
-    id: "2",
-    url: "https://www.youtube.com/watch?v=LdOM0x0XDMo",
-    title: "Tenet - Official Trailer",
-    description: "Armed with only one word, a CIA operative journeys through a twilight world of international espionage.",
-    platform: "youtube" as Platform,
-    thumbnail: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&h=340&fit=crop",
-  },
-];
-
-type AppState = "input" | "loading" | "profile";
+type AppState = "input" | "loading" | "profile" | "error";
 type LoadingStage = "crawling" | "aggregating" | "synthesizing" | "building";
 
 export default function Home() {
   const [appState, setAppState] = useState<AppState>("input");
   const [loadingStage, setLoadingStage] = useState<LoadingStage>("crawling");
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // todo: remove mock functionality - replace with actual API call
+  const generateMutation = useMutation({
+    mutationFn: async (url: string) => {
+      const response = await apiRequest("POST", "/api/profiles/generate", { url });
+      return response.json() as Promise<Profile>;
+    },
+    onSuccess: (data) => {
+      setProfile(data);
+      setAppState("profile");
+    },
+    onError: (error) => {
+      console.error("Generation failed:", error);
+      setErrorMessage(error instanceof Error ? error.message : "Failed to generate profile");
+      setAppState("error");
+    },
+  });
+
   const handleSubmit = async (url: string) => {
-    console.log("Generating profile for:", url);
     setAppState("loading");
+    setErrorMessage("");
     
+    // Simulate stage progression while waiting for API
     const stages: LoadingStage[] = ["crawling", "aggregating", "synthesizing", "building"];
-    for (let i = 0; i < stages.length; i++) {
-      setLoadingStage(stages[i]);
-      await new Promise((r) => setTimeout(r, 1000));
-    }
+    let stageIndex = 0;
     
-    setAppState("profile");
+    const stageInterval = setInterval(() => {
+      stageIndex = Math.min(stageIndex + 1, stages.length - 1);
+      setLoadingStage(stages[stageIndex]);
+    }, 3000);
+
+    try {
+      await generateMutation.mutateAsync(url);
+    } finally {
+      clearInterval(stageInterval);
+    }
   };
 
   const handleReset = () => {
     setAppState("input");
+    setProfile(null);
+    setErrorMessage("");
   };
 
   const handlePlayVideo = (projectId: string) => {
@@ -165,7 +92,7 @@ export default function Home() {
           </button>
           
           <div className="flex items-center gap-2">
-            {appState === "profile" && (
+            {(appState === "profile" || appState === "error") && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -191,7 +118,7 @@ export default function Home() {
                 Transform any creator's online presence into a verified, visually engaging portfolio
               </p>
             </div>
-            <URLInputForm onSubmit={handleSubmit} />
+            <URLInputForm onSubmit={handleSubmit} isLoading={generateMutation.isPending} />
           </div>
         )}
 
@@ -199,26 +126,55 @@ export default function Home() {
           <LoadingState stage={loadingStage} />
         )}
 
-        {appState === "profile" && (
+        {appState === "error" && (
+          <div className="py-20 md:py-32">
+            <div className="max-w-md mx-auto px-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-8 h-8 text-destructive" />
+              </div>
+              <h2 className="text-2xl font-display font-bold mb-2">Generation Failed</h2>
+              <p className="text-muted-foreground mb-6">{errorMessage || "Something went wrong. Please try again."}</p>
+              <Button onClick={handleReset} data-testid="button-try-again">
+                Try Again
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {appState === "profile" && profile && (
           <>
-            <ProfileHeader {...mockProfileData} />
-            
-            <div className="border-t" />
-            
-            <ProjectGrid 
-              projects={mockProjects} 
-              title="Featured Projects"
-              onPlayVideo={handlePlayVideo}
+            <ProfileHeader 
+              name={profile.name}
+              role={profile.role}
+              bio={profile.bio}
+              imageUrl={profile.imageUrl}
+              projectCount={profile.projectCount}
+              yearsActive={profile.yearsActive}
+              platforms={profile.platforms}
+              socialLinks={profile.socialLinks}
+              confidence={profile.confidence}
             />
             
             <div className="border-t" />
             
-            <MediaGallery items={mockMedia} title="Videos & Media" />
+            <ProjectGrid 
+              projects={profile.projects} 
+              title="Featured Projects"
+              onPlayVideo={handlePlayVideo}
+            />
+            
+            {profile.media.length > 0 && (
+              <>
+                <div className="border-t" />
+                <MediaGallery items={profile.media} title="Videos & Media" />
+              </>
+            )}
             
             <div className="py-12">
               <div className="max-w-7xl mx-auto px-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Profile generated with AI confidence score of 94%. Data sourced from IMDb, YouTube, and personal website.
+                  Profile generated with AI confidence score of {Math.round(profile.confidence * 100)}%. 
+                  Data sourced from {profile.platforms.join(", ")}.
                 </p>
               </div>
             </div>

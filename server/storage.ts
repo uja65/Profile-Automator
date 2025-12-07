@@ -1,20 +1,26 @@
-import { type User, type InsertUser } from "@shared/schema";
+import type { User, InsertUser, Profile } from "@shared/schema";
 import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  
+  // Profile operations
+  getProfile(id: string): Promise<Profile | undefined>;
+  getProfileByUrlHash(urlHash: string): Promise<Profile | undefined>;
+  createProfile(profile: Profile): Promise<Profile>;
+  updateProfile(id: string, profile: Partial<Profile>): Promise<Profile | undefined>;
+  getAllProfiles(): Promise<Profile[]>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
+  private profiles: Map<string, Profile>;
 
   constructor() {
     this.users = new Map();
+    this.profiles = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -32,6 +38,34 @@ export class MemStorage implements IStorage {
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
     return user;
+  }
+
+  async getProfile(id: string): Promise<Profile | undefined> {
+    return this.profiles.get(id);
+  }
+
+  async getProfileByUrlHash(urlHash: string): Promise<Profile | undefined> {
+    return Array.from(this.profiles.values()).find(
+      (profile) => profile.urlHash === urlHash
+    );
+  }
+
+  async createProfile(profile: Profile): Promise<Profile> {
+    this.profiles.set(profile.id, profile);
+    return profile;
+  }
+
+  async updateProfile(id: string, updates: Partial<Profile>): Promise<Profile | undefined> {
+    const existing = this.profiles.get(id);
+    if (!existing) return undefined;
+    
+    const updated = { ...existing, ...updates };
+    this.profiles.set(id, updated);
+    return updated;
+  }
+
+  async getAllProfiles(): Promise<Profile[]> {
+    return Array.from(this.profiles.values());
   }
 }
 
