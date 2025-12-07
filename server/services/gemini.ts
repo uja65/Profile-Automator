@@ -80,11 +80,22 @@ If you cannot determine certain information, use reasonable defaults and lower t
 Respond ONLY with valid JSON, no markdown formatting.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-1.5-flash",
       contents: prompt,
     });
 
-    const text = response.text || "";
+    // Extract text from response - handle both direct text property and candidates structure
+    let text = "";
+    if (typeof response.text === "string") {
+      text = response.text;
+    } else if (response.candidates && response.candidates[0]?.content?.parts?.[0]?.text) {
+      text = response.candidates[0].content.parts[0].text;
+    }
+    
+    if (!text) {
+      console.warn("Gemini returned empty response, using fallback");
+      return createFallbackProfile(crawledData, enrichmentData);
+    }
     
     // Clean up the response - remove markdown code blocks if present
     let jsonText = text.trim();
