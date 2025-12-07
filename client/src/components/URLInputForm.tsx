@@ -45,7 +45,7 @@ export default function URLInputForm({ onSubmit, isLoading = false }: URLInputFo
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto" data-testid="card-url-input">
+    <Card className="w-full max-w-2xl mx-auto glass-card" data-testid="card-url-input">
       <CardHeader className="text-center space-y-2">
         <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
           <Sparkles className="w-6 h-6 text-primary" />
@@ -86,7 +86,7 @@ export default function URLInputForm({ onSubmit, isLoading = false }: URLInputFo
           <Button
             type="submit"
             size="lg"
-            className="w-full gap-2"
+            className="w-full gap-2 glow-button"
             disabled={isLoading}
             data-testid="button-generate"
           >

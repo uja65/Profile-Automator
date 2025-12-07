@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import URLInputForm from "@/components/URLInputForm";
 import ProfileHeader from "@/components/ProfileHeader";
 import ProjectGrid from "@/components/ProjectGrid";
@@ -10,6 +11,13 @@ import { Button } from "@/components/ui/button";
 import { ArrowUp, Sparkles, AlertCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Profile } from "@shared/schema";
+
+const floatingOrbs = [
+  { size: 300, x: "10%", y: "20%", delay: 0, color: "hsl(217 91% 60% / 0.3)" },
+  { size: 200, x: "80%", y: "10%", delay: 2, color: "hsl(280 65% 60% / 0.25)" },
+  { size: 250, x: "70%", y: "60%", delay: 4, color: "hsl(173 58% 39% / 0.2)" },
+  { size: 180, x: "20%", y: "70%", delay: 6, color: "hsl(280 65% 60% / 0.2)" },
+];
 
 type AppState = "input" | "loading" | "profile" | "error";
 type LoadingStage = "crawling" | "aggregating" | "synthesizing" | "building";
@@ -111,13 +119,54 @@ export default function Home() {
 
       <main>
         {appState === "input" && (
-          <div className="py-20 md:py-32">
-            <div className="max-w-4xl mx-auto px-6 text-center mb-12">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-display tracking-tight mb-4">
-                AI-Powered Profile Generator
-              </h1>
+          <div className="relative min-h-[calc(100vh-3.5rem)] flex items-center justify-center overflow-hidden">
+            {/* Animated gradient background */}
+            <div className="absolute inset-0 animated-gradient-bg" />
+            
+            {/* Floating orbs */}
+            {floatingOrbs.map((orb, i) => (
+              <motion.div
+                key={i}
+                className="absolute rounded-full floating-orb pointer-events-none"
+                style={{
+                  width: orb.size,
+                  height: orb.size,
+                  left: orb.x,
+                  top: orb.y,
+                  background: `radial-gradient(circle, ${orb.color}, transparent 70%)`,
+                  filter: "blur(40px)",
+                }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 1.5, delay: orb.delay * 0.1 }}
+              />
+            ))}
+            
+            {/* Content */}
+            <div className="relative z-10 py-20 md:py-32 w-full">
+              <motion.div 
+                className="max-w-4xl mx-auto px-6 text-center mb-12"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+              >
+                <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold font-display tracking-tight mb-6 gradient-text">
+                  AI-Powered Profile Generator
+                </h1>
+                <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+                  Transform any URL into a stunning professional profile
+                </p>
+              </motion.div>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+                className="animate-float"
+              >
+                <URLInputForm onSubmit={handleSubmit} isLoading={generateMutation.isPending} />
+              </motion.div>
             </div>
-            <URLInputForm onSubmit={handleSubmit} isLoading={generateMutation.isPending} />
           </div>
         )}
 
