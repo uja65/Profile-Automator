@@ -1,0 +1,69 @@
+Agent Prompt — Auto Profile Creator: Universal URL Crawling & AI Synthesis
+Objective:
+Build an AI-powered Universal Auto Profile Creator that takes any personal URL (e.g., a portfolio, website, or social link) and automatically constructs a rich creative profile of the person — including bio, photo, project list, credits, collaborators, and media embeds — sourced from verified public platforms.
+🏗️ System Overview
+Input Layer:
+User provides any URL containing personal or professional information.
+The system validates and standardizes the URL (resolves redirects, canonicalizes domain).
+Crawler & Discovery Engine:
+Crawl the provided URL and follow internal and outbound links up to a configurable depth (e.g., depth=3).
+Prioritize pages likely containing profile or project data (/about, /projects, /portfolio, /filmography, etc.).
+Extract structured and unstructured data:
+Name, aliases, bio/description
+Profile image(s)
+Social links (IMDb, YouTube, Vimeo, Facebook, LinkedIn, TMDB, OMDB)
+Mentions of projects, collaborators, and roles
+Cross-Platform Data Aggregation:
+Identify and fetch data from known creative sources:
+IMDb / TMDB / OMDB → project titles, roles, release years, cover art
+YouTube / Vimeo → video titles, collaborators, thumbnails, upload year, embedded media
+Facebook / LinkedIn → page metadata, description, team members (if available)
+Use Perplexity SPA as the primary intelligent search layer to expand on incomplete data.
+If Perplexity SPA fails or API rate limits occur, fallback to local scraping and offline crawling.
+AI Identity Resolution (Gemini / LLM):
+Input all gathered text + metadata into a synthesis prompt to infer:
+Unified identity (name, summary, roles)
+Condensed biography
+Top projects with roles and collaborators
+Key creative themes or styles
+The AI should assign confidence scores to each inference.
+If confidence < threshold (e.g., 0.7), the system should request another URL or trigger deeper crawl.
+Profile Builder (Frontend):
+Generate a cross-platform profile view using Next.js + Tailwind + Tabbs UI design:
+Header: Name, profile picture, role, short bio
+Project grid: title, year, cover image, platform badge (IMDb, YouTube, etc.)
+Embedded media players (for videos/trailers)
+“Source tags” for transparency (e.g., IMDb, YouTube)
+Include fallback placeholder images for missing assets.
+Storage & APIs:
+Store structured data in a NoSQL DB (e.g., Firebase, MongoDB) or serverless function cache.
+Each profile should be queryable via unique identifier or input URL hash.
+Deployment & Documentation:
+Deploy frontend + backend to Vercel
+Repository hosted on GitHub (auto-profil-v2)
+Include detailed README covering:
+Data sources
+Crawling depth
+Confidence thresholds
+Integration flow (Perplexity → Gemini → UI)
+⚙️ Technical Stack
+Frontend: Next.js 14, Tailwind CSS, ShadCN, Tabbs UI
+Backend: Node.js / Express or Next.js API routes
+Crawler: Playwright / Puppeteer / Cheerio + recursive depth handling
+AI Processing: Gemini or OpenAI API (gpt-4/5)
+Search Layer: Perplexity SPA API (primary), Local Scraper (fallback)
+Data Storage: Firebase / MongoDB / PlanetScale
+Deployment: Vercel
+Version Control: GitHub
+🧩 Key Requirements
+ Accept any input URL and perform robust validation
+ Implement recursive crawl + outbound link handling
+ Integrate Perplexity SPA API for contextual searches
+ Implement local crawler fallback if Perplexity fails
+ Aggregate data from IMDb, TMDB, OMDB, YouTube, Vimeo, Facebook
+ Merge data using Gemini AI into a unified creative profile
+ Build elegant frontend display with project cards and media embeds
+ Include source tags and confidence scoring
+ Deploy and document the full end-to-end pipeline
+🚀 Goal
+Deliver a self-contained, AI-augmented profile generator that can take any creator’s online presence and transform it into a verified, visually engaging, and metadata-rich auto-generated portfolio.
