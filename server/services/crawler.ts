@@ -91,6 +91,50 @@ function extractLinks($: cheerio.CheerioAPI, baseUrl: string): string[] {
   return Array.from(new Set(links));
 }
 
+function extractVideoUrls($: cheerio.CheerioAPI, links: string[]): string[] {
+  const videoUrls: string[] = [];
+  const videoPatterns = [
+    /youtube\.com\/watch\?v=([^&]+)/,
+    /youtu\.be\/([^?]+)/,
+    /youtube\.com\/embed\/([^?]+)/,
+    /vimeo\.com\/(\d+)/,
+    /player\.vimeo\.com\/video\/(\d+)/,
+  ];
+
+  // Check all links for video URLs
+  for (const link of links) {
+    for (const pattern of videoPatterns) {
+      if (pattern.test(link)) {
+        videoUrls.push(link);
+        break;
+      }
+    }
+  }
+
+  // Check iframes for embedded videos
+  $("iframe").each((_, el) => {
+    const src = $(el).attr("src") || $(el).attr("data-src");
+    if (src) {
+      for (const pattern of videoPatterns) {
+        if (pattern.test(src)) {
+          videoUrls.push(src);
+          break;
+        }
+      }
+    }
+  });
+
+  // Check video elements and data attributes
+  $("[data-video-url], [data-vimeo-url], [data-youtube-url]").each((_, el) => {
+    const videoUrl = $(el).attr("data-video-url") || $(el).attr("data-vimeo-url") || $(el).attr("data-youtube-url");
+    if (videoUrl) {
+      videoUrls.push(videoUrl);
+    }
+  });
+
+  return Array.from(new Set(videoUrls));
+}
+
 function extractMetadata($: cheerio.CheerioAPI): Record<string, string> {
   const metadata: Record<string, string> = {};
 
@@ -145,9 +189,6 @@ export async function crawlUrl(url: string): Promise<CrawledData> {
 
     const $ = cheerio.load(response.data);
 
-    // Remove script and style elements
-    $("script, style, noscript, iframe").remove();
-
     const title = $("title").text().trim() || 
                   $('meta[property="og:title"]').attr("content") || 
                   undefined;
@@ -160,6 +201,10 @@ export async function crawlUrl(url: string): Promise<CrawledData> {
     const links = extractLinks($, url);
     const socialLinks = extractSocialLinks(links);
     const metadata = extractMetadata($);
+    const videoUrls = extractVideoUrls($, links);
+
+    // Remove script and style elements for text extraction
+    $("script, style, noscript, iframe").remove();
 
     // Extract main text content
     const textContent = cleanText($("body").text());
@@ -173,6 +218,7 @@ export async function crawlUrl(url: string): Promise<CrawledData> {
       socialLinks,
       textContent,
       metadata,
+      videoUrls,
     };
   } catch (error) {
     console.error("Crawler error:", error);

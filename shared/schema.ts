@@ -41,6 +41,7 @@ export const projectSchema = z.object({
   hasVideo: z.boolean().optional(),
   description: z.string().optional(),
   sourceUrl: z.string().optional(),
+  videoUrl: z.string().optional(),
 });
 export type Project = z.infer<typeof projectSchema>;
 
@@ -92,6 +93,7 @@ export const crawledDataSchema = z.object({
   socialLinks: z.array(socialLinkSchema),
   textContent: z.string(),
   metadata: z.record(z.string()).optional(),
+  videoUrls: z.array(z.string()).optional(),
 });
 export type CrawledData = z.infer<typeof crawledDataSchema>;
 

@@ -13,6 +13,7 @@ interface ProjectCardProps {
   platform: Platform;
   collaborators?: string[];
   hasVideo?: boolean;
+  videoUrl?: string;
   onPlay?: () => void;
 }
 
@@ -25,15 +26,25 @@ export default function ProjectCard({
   platform,
   collaborators = [],
   hasVideo = false,
+  videoUrl,
   onPlay,
 }: ProjectCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+
+  const handleClick = () => {
+    if (videoUrl) {
+      window.open(videoUrl, '_blank', 'noopener,noreferrer');
+    } else if (hasVideo && onPlay) {
+      onPlay();
+    }
+  };
 
   return (
     <Card
       className="group overflow-visible cursor-pointer hover-elevate active-elevate-2"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={handleClick}
       data-testid={`card-project-${id}`}
     >
       <div className="relative aspect-video overflow-hidden rounded-t-md">
@@ -55,7 +66,7 @@ export default function ProjectCard({
           <PlatformBadge platform={platform} />
         </div>
 
-        {hasVideo && (
+        {(hasVideo || videoUrl) && (
           <div
             className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-200 ${
               isHovered ? "opacity-100" : "opacity-0"
@@ -64,7 +75,7 @@ export default function ProjectCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onPlay?.();
+                handleClick();
               }}
               className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center hover-elevate active-elevate-2"
               data-testid={`button-play-${id}`}

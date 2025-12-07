@@ -11,6 +11,7 @@ interface Project {
   platform: Platform;
   collaborators?: string[];
   hasVideo?: boolean;
+  videoUrl?: string;
 }
 
 interface ProjectGridProps {
