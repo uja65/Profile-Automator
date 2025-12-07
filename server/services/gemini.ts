@@ -18,16 +18,22 @@ export async function synthesizeProfile(
   crawledData: CrawledData,
   enrichmentData: EnrichmentData
 ): Promise<SynthesisResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  // Use Replit AI Integrations (preferred) or fallback to user's API key
+  const apiKey = process.env.AI_INTEGRATIONS_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  const baseUrl = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
   
   if (!apiKey) {
-    console.warn("GEMINI_API_KEY not configured, using fallback synthesis");
+    console.warn("No Gemini API key configured, using fallback synthesis");
     return createFallbackProfile(crawledData, enrichmentData);
   }
 
   try {
-    console.log("Gemini API key available, attempting synthesis...");
-    const ai = new GoogleGenAI({ apiKey });
+    console.log("Gemini API available, attempting synthesis...");
+    // Using Replit AI Integrations - requires apiVersion: "" for compatibility
+    const ai = new GoogleGenAI({ 
+      apiKey,
+      httpOptions: baseUrl ? { apiVersion: "", baseUrl } : undefined
+    });
 
     const prompt = `Analyze the following data about a creative professional and synthesize a unified profile.
 
@@ -80,9 +86,10 @@ Please synthesize this information and respond with a JSON object containing:
 If you cannot determine certain information, use reasonable defaults and lower the confidence score.
 Respond ONLY with valid JSON, no markdown formatting.`;
 
-    console.log("Calling Gemini API with model gemini-2.0-flash...");
+    const usingReplitAI = !!process.env.AI_INTEGRATIONS_GEMINI_API_KEY;
+    console.log(`Calling Gemini API (${usingReplitAI ? 'Replit AI' : 'user key'}) with model gemini-2.5-flash...`);
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
     });
     console.log("Gemini API responded");
@@ -118,7 +125,31 @@ Respond ONLY with valid JSON, no markdown formatting.`;
     }
     jsonText = jsonText.trim();
 
-    const parsed = JSON.parse(jsonText);
+    // Try to extract valid JSON from the response
+    let parsed: any;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch (e) {
+      console.log("Initial JSON parse failed, attempting to fix...");
+      // Try to find JSON object boundaries
+      const startBrace = jsonText.indexOf('{');
+      const endBrace = jsonText.lastIndexOf('}');
+      if (startBrace !== -1 && endBrace > startBrace) {
+        jsonText = jsonText.slice(startBrace, endBrace + 1);
+        try {
+          parsed = JSON.parse(jsonText);
+        } catch (e2) {
+          // Try fixing common issues: unescaped quotes, trailing commas
+          jsonText = jsonText
+            .replace(/,\s*}/g, '}')
+            .replace(/,\s*]/g, ']')
+            .replace(/:\s*"([^"]*)"([^",}\]]*)"([^"]*)":/g, ': "$1\\"$2\\"$3":');
+          parsed = JSON.parse(jsonText);
+        }
+      } else {
+        throw e;
+      }
+    }
     
     // Validate and normalize the response
     return normalizeProfile(parsed, crawledData);
