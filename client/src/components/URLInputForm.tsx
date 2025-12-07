@@ -65,7 +65,7 @@ export default function URLInputForm({ onSubmit, isLoading = false }: URLInputFo
             </div>
             <Input
               type="text"
-              placeholder="https://yourportfolio.com or linkedin.com/in/username"
+              placeholder="https://yourportfolio.com"
               value={url}
               onChange={(e) => {
                 setUrl(e.target.value);
