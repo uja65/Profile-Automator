@@ -118,9 +118,7 @@ export default function ProjectCard({
         {profileId && (
           <button
             onClick={handleEditClick}
-            className={`absolute top-3 left-3 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center transition-opacity duration-200 ${
-              isHovered ? "opacity-100" : "opacity-0"
-            }`}
+            className="absolute top-3 left-3 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity duration-200 z-20"
             data-testid={`button-edit-cover-${id}`}
           >
             <Pencil className="w-4 h-4 text-white" />
@@ -129,8 +127,8 @@ export default function ProjectCard({
 
         {(hasVideo || videoUrl) && (
           <div
-            className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-200 ${
-              isHovered ? "opacity-100" : "opacity-0"
+            className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-200 z-10 ${
+              isHovered ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
             }`}
           >
             <button
@@ -148,8 +146,8 @@ export default function ProjectCard({
 
         {!hasVideo && !videoUrl && sourceUrl && (
           <div
-            className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-200 ${
-              isHovered ? "opacity-100" : "opacity-0"
+            className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-200 z-10 ${
+              isHovered ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
             }`}
           >
             <button

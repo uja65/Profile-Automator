@@ -8,8 +8,8 @@ import { crawlUrl, normalizeUrl, hashUrl } from "./services/crawler";
 import { searchWithPerplexity } from "./services/perplexity";
 import { synthesizeProfile } from "./services/gemini";
 import { enrichProjectsWithPosters } from "./services/tmdb";
-import { fetchChannelVideos, formatYouTubeDate } from "./services/youtube";
-import { getVimeoThumbnail, isVimeoUrl, fetchVimeoUserVideos, formatVimeoDate, VimeoVideo } from "./services/vimeo";
+import { fetchChannelVideos, formatYouTubeDate, searchYouTubeForProject } from "./services/youtube";
+import { getVimeoThumbnail, isVimeoUrl, fetchVimeoUserVideos, formatVimeoDate, VimeoVideo, searchVimeoForProject } from "./services/vimeo";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -148,6 +148,84 @@ export async function registerRoutes(
         return project;
       }));
 
+      // Step 6b: Enrich projects with video URLs (trailers for movies/shows, full videos for shorts)
+      console.log("Searching for video URLs on YouTube/Vimeo...");
+      const projectsWithVideos = await Promise.all(finalProjects.map(async (project) => {
+        // Skip if project already has a video URL
+        if (project.videoUrl) {
+          return project;
+        }
+        
+        // Determine project type based on role and title keywords
+        const roleLower = (project.role || "").toLowerCase();
+        const titleLower = project.title.toLowerCase();
+        
+        // Check if it's a short film/animation
+        const isShort = roleLower.includes("short") || 
+                       titleLower.includes("short") ||
+                       roleLower.includes("animation") ||
+                       titleLower.includes("animation") ||
+                       project.projectType === "short_film" ||
+                       project.projectType === "animation";
+        
+        const projectType = isShort ? "short" : "trailer";
+        
+        // First, check if we already have a matching video from channel videos
+        const matchingYouTube = youtubeVideos.find(video => {
+          const videoTitleLower = video.title.toLowerCase();
+          return videoTitleLower.includes(titleLower) || 
+                 titleLower.includes(videoTitleLower.split('|')[0].trim()) ||
+                 titleLower.split(/[\s-]+/).filter(w => w.length > 3).some(word => 
+                   videoTitleLower.includes(word)
+                 );
+        });
+        
+        if (matchingYouTube) {
+          console.log(`Found channel video for "${project.title}": ${matchingYouTube.url}`);
+          return { ...project, videoUrl: matchingYouTube.url, hasVideo: true };
+        }
+        
+        const matchingVimeo = vimeoVideos.find(video => {
+          const videoTitleLower = video.title.toLowerCase();
+          return videoTitleLower.includes(titleLower) || 
+                 titleLower.includes(videoTitleLower.split('|')[0].trim()) ||
+                 titleLower.split(/[\s-]+/).filter(w => w.length > 3).some(word => 
+                   videoTitleLower.includes(word)
+                 );
+        });
+        
+        if (matchingVimeo) {
+          console.log(`Found Vimeo channel video for "${project.title}": ${matchingVimeo.url}`);
+          return { ...project, videoUrl: matchingVimeo.url, hasVideo: true };
+        }
+        
+        // Search YouTube for the project
+        const youtubeResult = await searchYouTubeForProject(project.title, projectType);
+        if (youtubeResult) {
+          console.log(`Found YouTube ${projectType} for "${project.title}": ${youtubeResult.url}`);
+          return { 
+            ...project, 
+            videoUrl: youtubeResult.url, 
+            hasVideo: true,
+            coverImage: project.coverImage || youtubeResult.thumbnail
+          };
+        }
+        
+        // Fallback to Vimeo search
+        const vimeoResult = await searchVimeoForProject(project.title, projectType);
+        if (vimeoResult) {
+          console.log(`Found Vimeo ${projectType} for "${project.title}": ${vimeoResult.url}`);
+          return { 
+            ...project, 
+            videoUrl: vimeoResult.url, 
+            hasVideo: true,
+            coverImage: project.coverImage || vimeoResult.thumbnail
+          };
+        }
+        
+        return project;
+      }));
+
       // Step 7: Build the final profile
       // Only use platforms that we actually found links for (from crawled social links)
       const actualPlatforms = crawledData.socialLinks.length > 0
@@ -162,14 +240,14 @@ export async function registerRoutes(
         role: synthesisResult.role,
         bio: synthesisResult.bio,
         imageUrl: crawledData.images[0],
-        projectCount: finalProjects.length,
+        projectCount: projectsWithVideos.length,
         yearsActive: synthesisResult.yearsActive,
         platforms: actualPlatforms,
         socialLinks: crawledData.socialLinks.length > 0 
           ? crawledData.socialLinks 
           : [{ platform: "website" as const, url: normalizedUrl }],
         confidence: synthesisResult.confidence,
-        projects: finalProjects,
+        projects: projectsWithVideos,
         media: mediaItems,
         crawledData: {
           title: crawledData.title,
