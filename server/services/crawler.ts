@@ -1,5 +1,6 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
+import puppeteer from "puppeteer";
 import type { CrawledData, SocialLink, Platform } from "@shared/schema";
 
 const PLATFORM_PATTERNS: Record<Platform, RegExp> = {
@@ -176,6 +177,141 @@ function cleanText(text: string): string {
     .slice(0, 10000); // Limit text content
 }
 
+// Puppeteer-based extraction for JavaScript-rendered pages
+async function extractVideoUrlsWithPuppeteer(url: string): Promise<string[]> {
+  let browser = null;
+  const videoUrls: string[] = [];
+  
+  const videoPatterns = [
+    /youtube\.com\/watch\?v=([^&]+)/,
+    /youtu\.be\/([^?]+)/,
+    /youtube\.com\/embed\/([^?]+)/,
+    /vimeo\.com\/(\d+)/,
+    /player\.vimeo\.com\/video\/(\d+)/,
+  ];
+
+  try {
+    console.log("Launching Puppeteer for JavaScript-rendered content...");
+    
+    browser = await puppeteer.launch({
+      headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+      ],
+    });
+
+    const page = await browser.newPage();
+    
+    // Set a reasonable viewport
+    await page.setViewport({ width: 1280, height: 800 });
+    
+    // Set user agent
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+    // Navigate and wait for network to be mostly idle
+    await page.goto(url, { 
+      waitUntil: 'networkidle2',
+      timeout: 30000 
+    });
+
+    // Wait a bit more for any lazy-loaded content
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Extract all video URLs from the rendered page
+    const extractedUrls = await page.evaluate(() => {
+      const urls: string[] = [];
+      
+      // Check all iframes
+      document.querySelectorAll('iframe').forEach(iframe => {
+        const src = iframe.src || iframe.getAttribute('data-src') || '';
+        if (src) urls.push(src);
+      });
+      
+      // Check all anchor tags
+      document.querySelectorAll('a').forEach(a => {
+        const href = a.href || '';
+        if (href) urls.push(href);
+      });
+      
+      // Check elements with video-related data attributes
+      document.querySelectorAll('[data-video-url], [data-vimeo-url], [data-youtube-url], [data-src]').forEach(el => {
+        const videoUrl = el.getAttribute('data-video-url') || 
+                         el.getAttribute('data-vimeo-url') || 
+                         el.getAttribute('data-youtube-url') ||
+                         el.getAttribute('data-src') || '';
+        if (videoUrl) urls.push(videoUrl);
+      });
+      
+      // Check video elements
+      document.querySelectorAll('video').forEach(video => {
+        const src = video.src || video.getAttribute('data-src') || '';
+        if (src) urls.push(src);
+        
+        // Check source elements inside video
+        video.querySelectorAll('source').forEach(source => {
+          const sourceSrc = source.src || source.getAttribute('data-src') || '';
+          if (sourceSrc) urls.push(sourceSrc);
+        });
+      });
+      
+      // Check for Vimeo/YouTube players that might be loaded dynamically
+      document.querySelectorAll('[class*="vimeo"], [class*="youtube"], [id*="vimeo"], [id*="youtube"]').forEach(el => {
+        // Get all attributes that might contain URLs
+        for (const attr of el.attributes) {
+          if (attr.value.includes('vimeo.com') || attr.value.includes('youtube.com') || attr.value.includes('youtu.be')) {
+            urls.push(attr.value);
+          }
+        }
+      });
+
+      // Also search in inline scripts for video URLs
+      document.querySelectorAll('script').forEach(script => {
+        const content = script.textContent || '';
+        // Look for Vimeo video IDs in script content
+        const vimeoMatches = content.match(/vimeo\.com\/(?:video\/)?(\d+)/g);
+        if (vimeoMatches) {
+          vimeoMatches.forEach(match => urls.push('https://' + match));
+        }
+        // Look for YouTube video IDs
+        const youtubeMatches = content.match(/youtube\.com\/embed\/([^"'\s]+)/g);
+        if (youtubeMatches) {
+          youtubeMatches.forEach(match => urls.push('https://' + match));
+        }
+      });
+      
+      return urls;
+    });
+
+    // Filter for valid video URLs
+    for (const foundUrl of extractedUrls) {
+      for (const pattern of videoPatterns) {
+        if (pattern.test(foundUrl)) {
+          videoUrls.push(foundUrl);
+          break;
+        }
+      }
+    }
+
+    console.log(`Puppeteer found ${videoUrls.length} video URLs`);
+    
+  } catch (error) {
+    console.error("Puppeteer extraction error:", error);
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+
+  return Array.from(new Set(videoUrls));
+}
+
 export async function crawlUrl(url: string): Promise<CrawledData> {
   try {
     const response = await axios.get(url, {
@@ -201,7 +337,14 @@ export async function crawlUrl(url: string): Promise<CrawledData> {
     const links = extractLinks($, url);
     const socialLinks = extractSocialLinks(links);
     const metadata = extractMetadata($);
-    const videoUrls = extractVideoUrls($, links);
+    let videoUrls = extractVideoUrls($, links);
+
+    // If no video URLs found with Cheerio, try Puppeteer for JavaScript-rendered content
+    if (videoUrls.length === 0) {
+      console.log("No videos found with Cheerio, trying Puppeteer...");
+      const puppeteerVideos = await extractVideoUrlsWithPuppeteer(url);
+      videoUrls = [...new Set([...videoUrls, ...puppeteerVideos])];
+    }
 
     // Remove script and style elements for text extraction
     $("script, style, noscript, iframe").remove();
