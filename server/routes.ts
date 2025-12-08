@@ -7,7 +7,7 @@ import type { Profile } from "@shared/schema";
 import { crawlUrl, normalizeUrl, hashUrl } from "./services/crawler";
 import { searchWithPerplexity } from "./services/perplexity";
 import { synthesizeProfile } from "./services/gemini";
-import { enrichProjectsWithPosters } from "./services/tmdb";
+import { enrichProjectsWithPosters, searchPerson } from "./services/tmdb";
 import { fetchChannelVideos, formatYouTubeDate, searchYouTubeForProject } from "./services/youtube";
 import { getVimeoThumbnail, isVimeoUrl, fetchVimeoUserVideos, formatVimeoDate, VimeoVideo, searchVimeoForProject } from "./services/vimeo";
 
@@ -226,7 +226,25 @@ export async function registerRoutes(
         return project;
       }));
 
-      // Step 7: Build the final profile
+      // Step 7: Find person's profile image from TMDB
+      console.log("Searching for person profile image...");
+      let profileImageUrl: string | undefined = undefined;
+      
+      if (synthesisResult.name) {
+        const tmdbPersonImage = await searchPerson(synthesisResult.name);
+        if (tmdbPersonImage) {
+          profileImageUrl = tmdbPersonImage;
+          console.log(`Using TMDB person image for ${synthesisResult.name}`);
+        }
+      }
+      
+      // Fallback to crawled image if no TMDB person image found
+      if (!profileImageUrl && crawledData.images.length > 0) {
+        profileImageUrl = crawledData.images[0];
+        console.log("Using crawled image as fallback");
+      }
+
+      // Step 8: Build the final profile
       // Only use platforms that we actually found links for (from crawled social links)
       const actualPlatforms = crawledData.socialLinks.length > 0
         ? Array.from(new Set(crawledData.socialLinks.map(link => link.platform)))
@@ -239,7 +257,7 @@ export async function registerRoutes(
         name: synthesisResult.name,
         role: synthesisResult.role,
         bio: synthesisResult.bio,
-        imageUrl: crawledData.images[0],
+        imageUrl: profileImageUrl,
         projectCount: projectsWithVideos.length,
         yearsActive: synthesisResult.yearsActive,
         platforms: actualPlatforms,

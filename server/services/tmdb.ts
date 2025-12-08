@@ -14,6 +14,21 @@ interface TMDBSearchResult {
   overview?: string;
 }
 
+interface TMDBPersonResult {
+  id: number;
+  name: string;
+  profile_path: string | null;
+  known_for_department?: string;
+  popularity: number;
+}
+
+interface TMDBPersonSearchResponse {
+  page: number;
+  results: TMDBPersonResult[];
+  total_results: number;
+  total_pages: number;
+}
+
 interface TMDBSearchResponse {
   page: number;
   results: TMDBSearchResult[];
@@ -314,4 +329,42 @@ export async function enrichProjectsWithPosters<T extends { title: string; year:
   );
 
   return enrichedProjects;
+}
+
+export async function searchPerson(name: string): Promise<string | null> {
+  const apiKey = process.env.TMDB_API_KEY;
+  
+  if (!apiKey) {
+    console.warn("TMDB_API_KEY not configured, skipping person lookup");
+    return null;
+  }
+
+  try {
+    const response = await axios.get<TMDBPersonSearchResponse>(`${TMDB_BASE_URL}/search/person`, {
+      params: {
+        api_key: apiKey,
+        query: name,
+        include_adult: "false",
+      },
+      timeout: 5000,
+    });
+
+    if (response.data.results && response.data.results.length > 0) {
+      // Find the best match - prefer someone with a profile photo and high popularity
+      const withPhoto = response.data.results
+        .filter(r => r.profile_path)
+        .sort((a, b) => b.popularity - a.popularity);
+      
+      if (withPhoto.length > 0) {
+        const profilePath = withPhoto[0].profile_path;
+        console.log(`TMDB Person found: "${name}" -> "${withPhoto[0].name}" (popularity: ${withPhoto[0].popularity})`);
+        return `${TMDB_IMAGE_BASE}/w500${profilePath}`;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error("TMDB person search error:", error);
+    return null;
+  }
 }
