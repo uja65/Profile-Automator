@@ -9,6 +9,7 @@ import { searchWithPerplexity } from "./services/perplexity";
 import { synthesizeProfile } from "./services/gemini";
 import { enrichProjectsWithPosters } from "./services/omdb";
 import { fetchChannelVideos, formatYouTubeDate } from "./services/youtube";
+import { getVimeoThumbnail, isVimeoUrl } from "./services/vimeo";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -74,9 +75,9 @@ export async function registerRoutes(
         mediaItems = [...videoMedia, ...mediaItems.filter(m => !m.url.includes('youtube.com'))];
       }
 
-      // Step 6: Enrich projects with YouTube thumbnails as fallback cover images
-      console.log("Enriching projects with YouTube thumbnails...");
-      const finalProjects = enrichedProjects.map(project => {
+      // Step 6: Enrich projects with YouTube/Vimeo thumbnails as fallback cover images
+      console.log("Enriching projects with video thumbnails...");
+      const finalProjects = await Promise.all(enrichedProjects.map(async (project) => {
         if (project.coverImage) return project;
         
         // Try to find a matching YouTube video by title similarity
@@ -99,13 +100,22 @@ export async function registerRoutes(
         if (project.videoUrl?.includes('youtube.com/watch')) {
           const videoId = project.videoUrl.split('v=')[1]?.split('&')[0];
           if (videoId) {
-            console.log(`Using videoUrl thumbnail for project: ${project.title}`);
+            console.log(`Using YouTube videoUrl thumbnail for project: ${project.title}`);
             return { ...project, coverImage: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` };
           }
         }
         
+        // Fallback: Try Vimeo if project has a Vimeo videoUrl
+        if (project.videoUrl && isVimeoUrl(project.videoUrl)) {
+          const vimeoThumb = await getVimeoThumbnail(project.videoUrl);
+          if (vimeoThumb) {
+            console.log(`Using Vimeo thumbnail for project: ${project.title}`);
+            return { ...project, coverImage: vimeoThumb };
+          }
+        }
+        
         return project;
-      });
+      }));
 
       // Step 7: Build the final profile
       const profile: Profile = {
