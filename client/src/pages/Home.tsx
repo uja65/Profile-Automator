@@ -151,7 +151,7 @@ export default function Home() {
                 transition={{ duration: 0.8, ease: "easeOut" }}
               >
                 <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold font-display tracking-tight mb-6 gradient-text">
-                  AI-Powered Profile Generator
+                  AI Profile Builder
                 </h1>
                 <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
                   Transform your portfolio into a stunning professional profile
