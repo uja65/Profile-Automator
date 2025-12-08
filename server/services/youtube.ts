@@ -132,3 +132,74 @@ export function formatYouTubeDate(isoDate: string): string {
     return "Unknown";
   }
 }
+
+export interface YouTubeSearchResult {
+  videoId: string;
+  title: string;
+  thumbnail: string;
+  url: string;
+  duration?: string;
+  isTrailer: boolean;
+}
+
+export async function searchYouTubeForProject(
+  projectTitle: string,
+  projectType: "short" | "feature" | "trailer"
+): Promise<YouTubeSearchResult | null> {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  
+  if (!apiKey) {
+    console.log("YouTube API key not configured for search");
+    return null;
+  }
+
+  try {
+    const searchQueries = projectType === "short" 
+      ? [`${projectTitle} short film full`, `${projectTitle} short film`, `${projectTitle} full film`]
+      : [`${projectTitle} official trailer`, `${projectTitle} trailer`, `${projectTitle} movie trailer`];
+
+    for (const query of searchQueries) {
+      const response = await axios.get(
+        `https://www.googleapis.com/youtube/v3/search`,
+        {
+          params: {
+            part: "snippet",
+            type: "video",
+            q: query,
+            key: apiKey,
+            maxResults: 5,
+            videoDuration: projectType === "short" ? "medium" : "short",
+          },
+        }
+      );
+
+      if (response.data.items?.length > 0) {
+        const items = response.data.items;
+        
+        for (const item of items) {
+          const title = item.snippet.title.toLowerCase();
+          const projectLower = projectTitle.toLowerCase();
+          
+          if (title.includes(projectLower) || 
+              projectLower.split(' ').some((word: string) => word.length > 3 && title.includes(word))) {
+            console.log(`Found YouTube video for "${projectTitle}": ${item.snippet.title}`);
+            return {
+              videoId: item.id.videoId,
+              title: item.snippet.title,
+              thumbnail: item.snippet.thumbnails?.high?.url || 
+                        item.snippet.thumbnails?.medium?.url || "",
+              url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+              isTrailer: projectType === "trailer" || projectType === "feature",
+            };
+          }
+        }
+      }
+    }
+
+    console.log(`No YouTube video found for: ${projectTitle}`);
+    return null;
+  } catch (error) {
+    console.error("YouTube search error:", error);
+    return null;
+  }
+}

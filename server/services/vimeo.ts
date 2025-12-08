@@ -110,3 +110,77 @@ export function formatVimeoDate(isoDate: string): string {
     day: 'numeric'
   });
 }
+
+export interface VimeoSearchResult {
+  videoId: string;
+  title: string;
+  thumbnail: string;
+  url: string;
+  duration?: number;
+  isTrailer: boolean;
+}
+
+export async function searchVimeoForProject(
+  projectTitle: string,
+  projectType: "short" | "feature" | "trailer"
+): Promise<VimeoSearchResult | null> {
+  const apiKey = process.env.VIMEO_API_KEY;
+  
+  if (!apiKey) {
+    console.log("Vimeo API key not configured for search");
+    return null;
+  }
+
+  try {
+    const searchQueries = projectType === "short" 
+      ? [`${projectTitle} short film`, `${projectTitle} short`]
+      : [`${projectTitle} trailer`, `${projectTitle} official trailer`];
+
+    for (const query of searchQueries) {
+      const response = await axios.get(
+        `https://api.vimeo.com/videos`,
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          params: {
+            query: query,
+            per_page: 5,
+            sort: 'relevant',
+          },
+          timeout: 10000,
+        }
+      );
+
+      if (response.data.data?.length > 0) {
+        const items = response.data.data;
+        
+        for (const item of items) {
+          const title = item.name.toLowerCase();
+          const projectLower = projectTitle.toLowerCase();
+          
+          if (title.includes(projectLower) || 
+              projectLower.split(' ').some((word: string) => word.length > 3 && title.includes(word))) {
+            console.log(`Found Vimeo video for "${projectTitle}": ${item.name}`);
+            return {
+              videoId: item.uri.split('/').pop(),
+              title: item.name,
+              thumbnail: item.pictures?.sizes?.[3]?.link || 
+                        item.pictures?.sizes?.[2]?.link || "",
+              url: item.link,
+              duration: item.duration,
+              isTrailer: projectType === "trailer" || projectType === "feature",
+            };
+          }
+        }
+      }
+    }
+
+    console.log(`No Vimeo video found for: ${projectTitle}`);
+    return null;
+  } catch (error: any) {
+    console.error("Vimeo search error:", error.message || error);
+    return null;
+  }
+}

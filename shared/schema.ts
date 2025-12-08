@@ -29,6 +29,10 @@ export const socialLinkSchema = z.object({
 });
 export type SocialLink = z.infer<typeof socialLinkSchema>;
 
+// Project type classification
+export const projectTypeValues = ["short_film", "feature_film", "tv_show", "music_video", "commercial", "documentary", "animation", "other"] as const;
+export type ProjectType = typeof projectTypeValues[number];
+
 // Project type for in-memory storage
 export const projectSchema = z.object({
   id: z.string(),
@@ -36,12 +40,16 @@ export const projectSchema = z.object({
   year: z.string(),
   role: z.string(),
   coverImage: z.string().optional(),
+  coverImageLocked: z.boolean().optional(),
   platform: z.enum(platformTypes),
   collaborators: z.array(z.string()).optional(),
   hasVideo: z.boolean().optional(),
   description: z.string().optional(),
   sourceUrl: z.string().optional(),
   videoUrl: z.string().optional(),
+  videoType: z.enum(["full", "trailer", "clip"]).optional(),
+  projectType: z.enum(projectTypeValues).optional(),
+  runtime: z.number().optional(),
 });
 export type Project = z.infer<typeof projectSchema>;
 
