@@ -12,6 +12,7 @@ interface Project {
   collaborators?: string[];
   hasVideo?: boolean;
   videoUrl?: string;
+  sourceUrl?: string;
 }
 
 interface ProjectGridProps {

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import PlatformBadge, { type Platform } from "./PlatformBadge";
 import SourceTag from "./SourceTag";
-import { Play, Users, Calendar, Pencil } from "lucide-react";
+import { Play, Users, Calendar, Pencil, ExternalLink } from "lucide-react";
 
 interface ProjectCardProps {
   id: string;
@@ -24,6 +24,7 @@ interface ProjectCardProps {
   collaborators?: string[];
   hasVideo?: boolean;
   videoUrl?: string;
+  sourceUrl?: string;
   onPlay?: () => void;
   profileId?: string;
   onCoverUpdated?: (projectId: string, newCoverImage: string) => void;
@@ -39,6 +40,7 @@ export default function ProjectCard({
   collaborators = [],
   hasVideo = false,
   videoUrl,
+  sourceUrl,
   onPlay,
   profileId,
   onCoverUpdated,
@@ -51,6 +53,8 @@ export default function ProjectCard({
   const handleClick = () => {
     if (videoUrl) {
       window.open(videoUrl, '_blank', 'noopener,noreferrer');
+    } else if (sourceUrl) {
+      window.open(sourceUrl, '_blank', 'noopener,noreferrer');
     } else if (hasVideo && onPlay) {
       onPlay();
     }
@@ -138,6 +142,25 @@ export default function ProjectCard({
               data-testid={`button-play-${id}`}
             >
               <Play className="w-6 h-6 text-foreground fill-foreground ml-1" />
+            </button>
+          </div>
+        )}
+
+        {!hasVideo && !videoUrl && sourceUrl && (
+          <div
+            className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-200 ${
+              isHovered ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClick();
+              }}
+              className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center hover-elevate active-elevate-2"
+              data-testid={`button-link-${id}`}
+            >
+              <ExternalLink className="w-6 h-6 text-foreground" />
             </button>
           </div>
         )}

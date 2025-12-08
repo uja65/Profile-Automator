@@ -67,6 +67,49 @@ export async function getMoviePoster(title: string, year?: string): Promise<stri
   return movie?.Poster;
 }
 
+function extractYear(yearStr: string): string | undefined {
+  const match = yearStr.match(/(\d{4})/);
+  return match ? match[1] : undefined;
+}
+
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function titlesMatch(projectTitle: string, omdbTitle: string): boolean {
+  const normalizedProject = normalizeTitle(projectTitle);
+  const normalizedOmdb = normalizeTitle(omdbTitle);
+  
+  if (normalizedProject === normalizedOmdb) {
+    return true;
+  }
+  
+  if (normalizedProject.includes(normalizedOmdb) || normalizedOmdb.includes(normalizedProject)) {
+    return true;
+  }
+  
+  const projectWords = new Set(normalizedProject.split(" ").filter(w => w.length > 2));
+  const omdbWords = new Set(normalizedOmdb.split(" ").filter(w => w.length > 2));
+  
+  if (projectWords.size === 0 || omdbWords.size === 0) {
+    return normalizedProject === normalizedOmdb;
+  }
+  
+  let matchingWords = 0;
+  Array.from(projectWords).forEach(word => {
+    if (omdbWords.has(word)) {
+      matchingWords++;
+    }
+  });
+  
+  const overlapRatio = matchingWords / Math.min(projectWords.size, omdbWords.size);
+  return overlapRatio >= 0.5;
+}
+
 export async function enrichProjectsWithPosters<T extends { title: string; year: string; coverImage?: string }>(
   projects: T[]
 ): Promise<T[]> {
@@ -81,22 +124,43 @@ export async function enrichProjectsWithPosters<T extends { title: string; year:
   
   const enrichedProjects = await Promise.all(
     projects.map(async (project) => {
-      // Clean up the title - remove markdown formatting and extra characters
-      const cleanTitle = project.title
+      let cleanTitle = project.title
         .replace(/\|/g, "")
         .replace(/\*/g, "")
+        .replace(/\(film\)/gi, "")
+        .replace(/\(documentary\)/gi, "")
+        .replace(/\(short\)/gi, "")
+        .replace(/\(movie\)/gi, "")
+        .replace(/\(tv\s*series?\)/gi, "")
         .replace(/[^a-zA-Z0-9\s'-]/g, "")
+        .replace(/\s+/g, " ")
         .trim();
       
-      // Skip if title is too short or looks like garbage
       if (cleanTitle.length < 2) {
         return project;
       }
 
+      const year = extractYear(project.year);
+
       try {
-        const poster = await getMoviePoster(cleanTitle, project.year);
-        if (poster) {
-          return { ...project, coverImage: poster };
+        const movie = await searchMovie(cleanTitle, year);
+        
+        if (movie && movie.Poster) {
+          if (!titlesMatch(cleanTitle, movie.Title)) {
+            console.log(`Title mismatch - Requested: "${cleanTitle}", Got: "${movie.Title}" - skipping`);
+            return project;
+          }
+          
+          if (year) {
+            const omdbYear = extractYear(movie.Year);
+            if (omdbYear && Math.abs(parseInt(omdbYear) - parseInt(year)) > 2) {
+              console.log(`Year mismatch - Requested: ${year}, Got: ${movie.Year} - skipping`);
+              return project;
+            }
+          }
+          
+          console.log(`Matched: "${cleanTitle}" (${year}) -> "${movie.Title}" (${movie.Year})`);
+          return { ...project, coverImage: movie.Poster };
         }
       } catch (error) {
         console.error(`Failed to get poster for ${cleanTitle}:`, error);
