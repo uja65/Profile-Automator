@@ -149,6 +149,11 @@ export async function registerRoutes(
       }));
 
       // Step 7: Build the final profile
+      // Only use platforms that we actually found links for (from crawled social links)
+      const actualPlatforms = crawledData.socialLinks.length > 0
+        ? Array.from(new Set(crawledData.socialLinks.map(link => link.platform)))
+        : ["website"]; // Default to just website if no social links found
+
       const profile: Profile = {
         id: randomUUID(),
         urlHash,
@@ -159,10 +164,10 @@ export async function registerRoutes(
         imageUrl: crawledData.images[0],
         projectCount: finalProjects.length,
         yearsActive: synthesisResult.yearsActive,
-        platforms: synthesisResult.platforms,
+        platforms: actualPlatforms,
         socialLinks: crawledData.socialLinks.length > 0 
           ? crawledData.socialLinks 
-          : synthesisResult.platforms.map(p => ({ platform: p, url: normalizedUrl })),
+          : [{ platform: "website" as const, url: normalizedUrl }],
         confidence: synthesisResult.confidence,
         projects: finalProjects,
         media: mediaItems,
