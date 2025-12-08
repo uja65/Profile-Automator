@@ -8,6 +8,7 @@ import { crawlUrl, normalizeUrl, hashUrl } from "./services/crawler";
 import { searchWithPerplexity } from "./services/perplexity";
 import { synthesizeProfile } from "./services/gemini";
 import { enrichProjectsWithPosters } from "./services/omdb";
+import { fetchChannelVideos, formatYouTubeDate } from "./services/youtube";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -56,7 +57,23 @@ export async function registerRoutes(
       console.log("Enriching with OMDB posters...");
       const enrichedProjects = await enrichProjectsWithPosters(synthesisResult.projects);
 
-      // Step 5: Build the final profile
+      // Step 5: Fetch YouTube videos if channel URL exists
+      console.log("Fetching YouTube videos...");
+      let mediaItems = [...synthesisResult.media];
+      const youtubeLink = crawledData.socialLinks.find(l => l.platform === 'youtube');
+      if (youtubeLink) {
+        const youtubeVideos = await fetchChannelVideos(youtubeLink.url);
+        const videoMedia = youtubeVideos.map(video => ({
+          type: "video" as const,
+          url: video.url,
+          title: video.title,
+          thumbnail: video.thumbnail,
+          date: formatYouTubeDate(video.publishedAt),
+        }));
+        mediaItems = [...videoMedia, ...mediaItems.filter(m => !m.url.includes('youtube.com'))];
+      }
+
+      // Step 6: Build the final profile
       const profile: Profile = {
         id: randomUUID(),
         urlHash,
@@ -73,7 +90,7 @@ export async function registerRoutes(
           : synthesisResult.platforms.map(p => ({ platform: p, url: normalizedUrl })),
         confidence: synthesisResult.confidence,
         projects: enrichedProjects,
-        media: synthesisResult.media,
+        media: mediaItems,
         crawledData: {
           title: crawledData.title,
           description: crawledData.description,

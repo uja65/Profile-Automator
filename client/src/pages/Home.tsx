@@ -212,7 +212,7 @@ export default function Home() {
             {profile.media.length > 0 && (
               <>
                 <div className="border-t" />
-                <MediaGallery items={profile.media} title="Videos & Media" />
+                <MediaGallery items={profile.media} title="Videos" />
               </>
             )}
             
