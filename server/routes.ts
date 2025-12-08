@@ -60,9 +60,10 @@ export async function registerRoutes(
       // Step 5: Fetch YouTube videos if channel URL exists
       console.log("Fetching YouTube videos...");
       let mediaItems = [...synthesisResult.media];
+      let youtubeVideos: { url: string; title: string; thumbnail: string; publishedAt: string }[] = [];
       const youtubeLink = crawledData.socialLinks.find(l => l.platform === 'youtube');
       if (youtubeLink) {
-        const youtubeVideos = await fetchChannelVideos(youtubeLink.url);
+        youtubeVideos = await fetchChannelVideos(youtubeLink.url);
         const videoMedia = youtubeVideos.map(video => ({
           type: "video" as const,
           url: video.url,
@@ -73,7 +74,40 @@ export async function registerRoutes(
         mediaItems = [...videoMedia, ...mediaItems.filter(m => !m.url.includes('youtube.com'))];
       }
 
-      // Step 6: Build the final profile
+      // Step 6: Enrich projects with YouTube thumbnails as fallback cover images
+      console.log("Enriching projects with YouTube thumbnails...");
+      const finalProjects = enrichedProjects.map(project => {
+        if (project.coverImage) return project;
+        
+        // Try to find a matching YouTube video by title similarity
+        const projectTitleLower = project.title.toLowerCase();
+        const matchingVideo = youtubeVideos.find(video => {
+          const videoTitleLower = video.title.toLowerCase();
+          return videoTitleLower.includes(projectTitleLower) || 
+                 projectTitleLower.includes(videoTitleLower.split('|')[0].trim()) ||
+                 projectTitleLower.split(/[\s-]+/).some(word => 
+                   word.length > 3 && videoTitleLower.includes(word)
+                 );
+        });
+        
+        if (matchingVideo) {
+          console.log(`Using YouTube thumbnail for project: ${project.title}`);
+          return { ...project, coverImage: matchingVideo.thumbnail };
+        }
+        
+        // If project has a videoUrl that's a YouTube link, extract thumbnail
+        if (project.videoUrl?.includes('youtube.com/watch')) {
+          const videoId = project.videoUrl.split('v=')[1]?.split('&')[0];
+          if (videoId) {
+            console.log(`Using videoUrl thumbnail for project: ${project.title}`);
+            return { ...project, coverImage: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` };
+          }
+        }
+        
+        return project;
+      });
+
+      // Step 7: Build the final profile
       const profile: Profile = {
         id: randomUUID(),
         urlHash,
@@ -82,14 +116,14 @@ export async function registerRoutes(
         role: synthesisResult.role,
         bio: synthesisResult.bio,
         imageUrl: crawledData.images[0],
-        projectCount: enrichedProjects.length,
+        projectCount: finalProjects.length,
         yearsActive: synthesisResult.yearsActive,
         platforms: synthesisResult.platforms,
         socialLinks: crawledData.socialLinks.length > 0 
           ? crawledData.socialLinks 
           : synthesisResult.platforms.map(p => ({ platform: p, url: normalizedUrl })),
         confidence: synthesisResult.confidence,
-        projects: enrichedProjects,
+        projects: finalProjects,
         media: mediaItems,
         crawledData: {
           title: crawledData.title,
