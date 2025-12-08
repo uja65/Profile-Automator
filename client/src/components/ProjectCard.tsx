@@ -196,7 +196,7 @@ export default function ProjectCard({
       </div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent onClick={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>Edit Cover Image</DialogTitle>
             <DialogDescription>
