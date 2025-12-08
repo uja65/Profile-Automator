@@ -28,7 +28,7 @@ const platformConfig: Record<Platform, { label: string; icon: typeof Film; bgCla
 };
 
 export default function PlatformBadge({ platform, className = "" }: PlatformBadgeProps) {
-  const config = platformConfig[platform];
+  const config = platformConfig[platform] || platformConfig.website;
   const Icon = config.icon;
 
   return (
