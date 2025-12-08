@@ -98,7 +98,7 @@ export default function Home() {
             data-testid="button-logo"
           >
             <Sparkles className="w-5 h-5 text-primary" />
-            Tabb Profile
+            Tabb Profile Builder
           </button>
           
           <div className="flex items-center gap-2">
