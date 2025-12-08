@@ -1,8 +1,18 @@
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import PlatformBadge, { type Platform } from "./PlatformBadge";
 import SourceTag from "./SourceTag";
-import { Play, Users, Calendar } from "lucide-react";
+import { Play, Users, Calendar, Pencil } from "lucide-react";
 
 interface ProjectCardProps {
   id: string;
@@ -15,6 +25,8 @@ interface ProjectCardProps {
   hasVideo?: boolean;
   videoUrl?: string;
   onPlay?: () => void;
+  profileId?: string;
+  onCoverUpdated?: (projectId: string, newCoverImage: string) => void;
 }
 
 export default function ProjectCard({
@@ -28,14 +40,47 @@ export default function ProjectCard({
   hasVideo = false,
   videoUrl,
   onPlay,
+  profileId,
+  onCoverUpdated,
 }: ProjectCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [newCoverUrl, setNewCoverUrl] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleClick = () => {
     if (videoUrl) {
       window.open(videoUrl, '_blank', 'noopener,noreferrer');
     } else if (hasVideo && onPlay) {
       onPlay();
+    }
+  };
+
+  const handleEditClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    setNewCoverUrl(coverImage || "");
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveCover = async () => {
+    if (!profileId || !newCoverUrl.trim()) return;
+    
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`/api/profiles/${profileId}/projects/${id}/cover`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coverImage: newCoverUrl.trim() }),
+      });
+      
+      if (response.ok) {
+        onCoverUpdated?.(id, newCoverUrl.trim());
+        setIsEditDialogOpen(false);
+      }
+    } catch (error) {
+      console.error("Failed to update cover:", error);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -65,6 +110,18 @@ export default function ProjectCard({
         <div className="absolute top-3 right-3">
           <PlatformBadge platform={platform} />
         </div>
+
+        {profileId && (
+          <button
+            onClick={handleEditClick}
+            className={`absolute top-3 left-3 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center transition-opacity duration-200 ${
+              isHovered ? "opacity-100" : "opacity-0"
+            }`}
+            data-testid={`button-edit-cover-${id}`}
+          >
+            <Pencil className="w-4 h-4 text-white" />
+          </button>
+        )}
 
         {(hasVideo || videoUrl) && (
           <div
@@ -116,6 +173,53 @@ export default function ProjectCard({
 
         <SourceTag platform={platform} />
       </div>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Cover Image</DialogTitle>
+            <DialogDescription>
+              Paste a URL to a new cover image for "{title}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="https://example.com/image.jpg"
+              value={newCoverUrl}
+              onChange={(e) => setNewCoverUrl(e.target.value)}
+              data-testid="input-cover-url"
+            />
+            {newCoverUrl && (
+              <div className="mt-4 aspect-video rounded-md overflow-hidden bg-muted">
+                <img
+                  src={newCoverUrl}
+                  alt="Preview"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              data-testid="button-cancel-cover"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveCover}
+              disabled={isUpdating || !newCoverUrl.trim()}
+              data-testid="button-save-cover"
+            >
+              {isUpdating ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

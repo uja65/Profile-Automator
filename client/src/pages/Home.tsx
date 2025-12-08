@@ -75,6 +75,16 @@ export default function Home() {
     console.log("Playing video for project:", projectId);
   };
 
+  const handleCoverUpdated = (projectId: string, newCoverImage: string) => {
+    if (!profile) return;
+    setProfile({
+      ...profile,
+      projects: profile.projects.map(p =>
+        p.id === projectId ? { ...p, coverImage: newCoverImage } : p
+      ),
+    });
+  };
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -207,6 +217,8 @@ export default function Home() {
               projects={profile.projects} 
               title="Featured Projects"
               onPlayVideo={handlePlayVideo}
+              profileId={profile.id}
+              onCoverUpdated={handleCoverUpdated}
             />
             
             {profile.media.length > 0 && (

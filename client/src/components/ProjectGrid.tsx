@@ -18,12 +18,16 @@ interface ProjectGridProps {
   projects: Project[];
   title?: string;
   onPlayVideo?: (projectId: string) => void;
+  profileId?: string;
+  onCoverUpdated?: (projectId: string, newCoverImage: string) => void;
 }
 
 export default function ProjectGrid({ 
   projects, 
   title = "Projects",
-  onPlayVideo 
+  onPlayVideo,
+  profileId,
+  onCoverUpdated,
 }: ProjectGridProps) {
   if (projects.length === 0) {
     return (
@@ -50,6 +54,8 @@ export default function ProjectGrid({
               key={project.id}
               {...project}
               onPlay={() => onPlayVideo?.(project.id)}
+              profileId={profileId}
+              onCoverUpdated={onCoverUpdated}
             />
           ))}
         </div>

@@ -220,5 +220,39 @@ export async function registerRoutes(
     }
   });
 
+  // Update project cover image
+  app.patch("/api/profiles/:profileId/projects/:projectId/cover", async (req, res) => {
+    try {
+      const { profileId, projectId } = req.params;
+      const { coverImage } = req.body;
+      
+      if (!coverImage || typeof coverImage !== 'string') {
+        return res.status(400).json({ error: "coverImage URL is required" });
+      }
+      
+      const profile = await storage.getProfile(profileId);
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      
+      const projectIndex = profile.projects.findIndex(p => p.id === projectId);
+      if (projectIndex === -1) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      profile.projects[projectIndex] = {
+        ...profile.projects[projectIndex],
+        coverImage,
+        coverImageLocked: true,
+      };
+      
+      await storage.updateProfile(profile.id, profile);
+      return res.json(profile.projects[projectIndex]);
+    } catch (error) {
+      console.error("Update project cover error:", error);
+      return res.status(500).json({ error: "Failed to update cover image" });
+    }
+  });
+
   return httpServer;
 }
