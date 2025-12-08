@@ -85,6 +85,14 @@ export default function Home() {
     });
   };
 
+  const handleProfileImageUpdated = (newImageUrl: string) => {
+    if (!profile) return;
+    setProfile({
+      ...profile,
+      imageUrl: newImageUrl,
+    });
+  };
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -209,6 +217,8 @@ export default function Home() {
               yearsActive={profile.yearsActive}
               platforms={profile.platforms}
               socialLinks={profile.socialLinks}
+              profileId={profile.id}
+              onImageUpdated={handleProfileImageUpdated}
             />
             
             <div className="border-t" />

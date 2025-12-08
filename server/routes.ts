@@ -316,6 +316,31 @@ export async function registerRoutes(
     }
   });
 
+  // Update profile image
+  app.patch("/api/profiles/:profileId/image", async (req, res) => {
+    try {
+      const { profileId } = req.params;
+      const { imageUrl } = req.body;
+      
+      if (!imageUrl || typeof imageUrl !== 'string') {
+        return res.status(400).json({ error: "imageUrl is required" });
+      }
+      
+      const profile = await storage.getProfile(profileId);
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      
+      profile.imageUrl = imageUrl;
+      await storage.updateProfile(profile.id, profile);
+      
+      return res.json({ imageUrl });
+    } catch (error) {
+      console.error("Update profile image error:", error);
+      return res.status(500).json({ error: "Failed to update profile image" });
+    }
+  });
+
   // Update project cover image
   app.patch("/api/profiles/:profileId/projects/:projectId/cover", async (req, res) => {
     try {
