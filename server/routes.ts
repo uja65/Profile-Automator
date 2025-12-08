@@ -9,7 +9,7 @@ import { searchWithPerplexity } from "./services/perplexity";
 import { synthesizeProfile } from "./services/gemini";
 import { enrichProjectsWithPosters } from "./services/omdb";
 import { fetchChannelVideos, formatYouTubeDate } from "./services/youtube";
-import { getVimeoThumbnail, isVimeoUrl } from "./services/vimeo";
+import { getVimeoThumbnail, isVimeoUrl, fetchVimeoUserVideos, formatVimeoDate, VimeoVideo } from "./services/vimeo";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -75,6 +75,22 @@ export async function registerRoutes(
         mediaItems = [...videoMedia, ...mediaItems.filter(m => !m.url.includes('youtube.com'))];
       }
 
+      // Step 5b: Fetch Vimeo videos if channel URL exists
+      console.log("Fetching Vimeo videos...");
+      let vimeoVideos: VimeoVideo[] = [];
+      const vimeoLink = crawledData.socialLinks.find(l => l.platform === 'vimeo');
+      if (vimeoLink) {
+        vimeoVideos = await fetchVimeoUserVideos(vimeoLink.url);
+        const vimeoMedia = vimeoVideos.map(video => ({
+          type: "video" as const,
+          url: video.url,
+          title: video.title,
+          thumbnail: video.thumbnail,
+          date: formatVimeoDate(video.createdAt),
+        }));
+        mediaItems = [...mediaItems, ...vimeoMedia.filter(vm => !mediaItems.some(m => m.url === vm.url))];
+      }
+
       // Step 6: Enrich projects with YouTube/Vimeo thumbnails as fallback cover images
       console.log("Enriching projects with video thumbnails...");
       const finalProjects = await Promise.all(enrichedProjects.map(async (project) => {
@@ -105,11 +121,26 @@ export async function registerRoutes(
           }
         }
         
-        // Fallback: Try Vimeo if project has a Vimeo videoUrl
+        // Try to find a matching Vimeo video by title similarity
+        const matchingVimeoVideo = vimeoVideos.find(video => {
+          const videoTitleLower = video.title.toLowerCase();
+          return videoTitleLower.includes(projectTitleLower) || 
+                 projectTitleLower.includes(videoTitleLower.split('|')[0].trim()) ||
+                 projectTitleLower.split(/[\s-]+/).some(word => 
+                   word.length > 3 && videoTitleLower.includes(word)
+                 );
+        });
+        
+        if (matchingVimeoVideo && matchingVimeoVideo.thumbnail) {
+          console.log(`Using Vimeo channel thumbnail for project: ${project.title}`);
+          return { ...project, coverImage: matchingVimeoVideo.thumbnail };
+        }
+        
+        // Fallback: Try Vimeo oEmbed if project has a Vimeo videoUrl
         if (project.videoUrl && isVimeoUrl(project.videoUrl)) {
           const vimeoThumb = await getVimeoThumbnail(project.videoUrl);
           if (vimeoThumb) {
-            console.log(`Using Vimeo thumbnail for project: ${project.title}`);
+            console.log(`Using Vimeo oEmbed thumbnail for project: ${project.title}`);
             return { ...project, coverImage: vimeoThumb };
           }
         }
