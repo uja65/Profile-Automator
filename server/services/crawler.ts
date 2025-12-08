@@ -193,9 +193,37 @@ async function extractVideoUrlsWithPuppeteer(url: string): Promise<string[]> {
   try {
     console.log("Launching Puppeteer for JavaScript-rendered content...");
     
+    // Determine Chromium executable path with multiple fallbacks
+    const getChromiumPath = (): string | undefined => {
+      // 1. Explicit environment variable
+      if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+        return process.env.PUPPETEER_EXECUTABLE_PATH;
+      }
+      // 2. Try Puppeteer's bundled Chromium
+      try {
+        const bundledPath = puppeteer.executablePath();
+        if (bundledPath) return bundledPath;
+      } catch {
+        // Bundled Chromium not available
+      }
+      // 3. Nix-specific path (Replit environment)
+      const nixPath = '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium';
+      try {
+        const fs = require('fs');
+        if (fs.existsSync(nixPath)) return nixPath;
+      } catch {
+        // Path doesn't exist
+      }
+      // 4. Let Puppeteer try its default
+      return undefined;
+    };
+
+    const executablePath = getChromiumPath();
+    console.log(`Using Chromium at: ${executablePath || 'default'}`);
+
     browser = await puppeteer.launch({
       headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
+      ...(executablePath && { executablePath }),
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
