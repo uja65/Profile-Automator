@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link, Loader2, Camera, ArrowRight } from "lucide-react";
+import { Link, Loader2, Video, ArrowRight } from "lucide-react";
 
 interface URLInputFormProps {
   onSubmit: (url: string) => void;
@@ -48,7 +48,7 @@ export default function URLInputForm({ onSubmit, isLoading = false }: URLInputFo
     <Card className="w-full max-w-2xl mx-auto glass-card" data-testid="card-url-input">
       <CardHeader className="text-center space-y-2">
         <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-          <Camera className="w-6 h-6 text-primary" />
+          <Video className="w-6 h-6 text-primary" />
         </div>
         <CardTitle className="text-2xl md:text-3xl font-display">
           Enhanced Profile Analysis
