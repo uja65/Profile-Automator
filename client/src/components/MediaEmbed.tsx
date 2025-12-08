@@ -1,9 +1,16 @@
 import { useState } from "react";
 import ReactPlayer from "react-player";
 import { Card } from "@/components/ui/card";
-import { Play, X } from "lucide-react";
+import { Play, X, ExternalLink } from "lucide-react";
 import PlatformBadge, { type Platform } from "./PlatformBadge";
 import SourceTag from "./SourceTag";
+
+function isPlayableUrl(url: string): boolean {
+  if (url.includes("youtube.com/watch") || url.includes("youtu.be/")) return true;
+  if (url.includes("vimeo.com/") && !url.includes("/channels")) return true;
+  if (url.includes("youtube.com/channel") || url.includes("youtube.com/c/") || url.includes("youtube.com/@")) return false;
+  return false;
+}
 
 interface MediaEmbedProps {
   url: string;
@@ -22,10 +29,15 @@ export default function MediaEmbed({
 }: MediaEmbedProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false);
+  const canPlay = isPlayableUrl(url);
 
   const handlePlay = () => {
-    setShowPlayer(true);
-    setIsPlaying(true);
+    if (canPlay) {
+      setShowPlayer(true);
+      setIsPlaying(true);
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const handleClose = () => {
@@ -36,7 +48,7 @@ export default function MediaEmbed({
   return (
     <Card className="overflow-hidden" data-testid="card-media-embed">
       <div className="relative aspect-video bg-muted">
-        {showPlayer ? (
+        {showPlayer && canPlay ? (
           <>
             <ReactPlayer
               url={url}
@@ -73,7 +85,11 @@ export default function MediaEmbed({
                 className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center hover-elevate active-elevate-2 transition-transform hover:scale-110"
                 data-testid="button-play-media"
               >
-                <Play className="w-7 h-7 text-foreground fill-foreground ml-1" />
+                {canPlay ? (
+                  <Play className="w-7 h-7 text-foreground fill-foreground ml-1" />
+                ) : (
+                  <ExternalLink className="w-7 h-7 text-foreground" />
+                )}
               </button>
             </div>
           </>
@@ -90,6 +106,11 @@ export default function MediaEmbed({
         {description && (
           <p className="text-sm text-muted-foreground line-clamp-2">
             {description}
+          </p>
+        )}
+        {!canPlay && (
+          <p className="text-xs text-muted-foreground">
+            Click to open on {platform}
           </p>
         )}
         <SourceTag platform={platform} />
