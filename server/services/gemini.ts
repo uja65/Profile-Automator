@@ -72,6 +72,7 @@ Please synthesize this information and respond with a JSON object containing:
       "hasVideo": true/false,
       "description": "Brief description",
       "videoUrl": "https://youtube.com/watch?v=... or https://vimeo.com/... (if available)",
+      "sourceUrl": "https://imdb.com/title/... or link to project page (required for clickable projects)",
       "coverImage": "URL from the images list that best matches this project (if available)"
     }
   ],
@@ -186,6 +187,7 @@ function normalizeProfile(parsed: any, crawledData: CrawledData): SynthesisResul
     description: p.description ? String(p.description) : undefined,
     coverImage: p.coverImage ? String(p.coverImage) : undefined,
     videoUrl: p.videoUrl ? String(p.videoUrl) : undefined,
+    sourceUrl: p.sourceUrl ? String(p.sourceUrl) : undefined,
   }));
 
   const normalizedMedia: MediaItem[] = (parsed.media || []).map((m: any, i: number) => ({

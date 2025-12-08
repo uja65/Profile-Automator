@@ -110,7 +110,7 @@ function titlesMatch(projectTitle: string, omdbTitle: string): boolean {
   return overlapRatio >= 0.5;
 }
 
-export async function enrichProjectsWithPosters<T extends { title: string; year: string; coverImage?: string }>(
+export async function enrichProjectsWithPosters<T extends { title: string; year: string; coverImage?: string; sourceUrl?: string }>(
   projects: T[]
 ): Promise<T[]> {
   const apiKey = process.env.OMDB_API_KEY;
@@ -159,8 +159,15 @@ export async function enrichProjectsWithPosters<T extends { title: string; year:
             }
           }
           
-          console.log(`Matched: "${cleanTitle}" (${year}) -> "${movie.Title}" (${movie.Year})`);
-          return { ...project, coverImage: movie.Poster };
+          console.log(`Matched: "${cleanTitle}" (${year}) -> "${movie.Title}" (${movie.Year}) [${movie.imdbID}]`);
+          const updates: Partial<T> = { coverImage: movie.Poster } as Partial<T>;
+          
+          // Add IMDb sourceUrl if project doesn't have one and we have a valid imdbID
+          if (!project.sourceUrl && movie.imdbID) {
+            (updates as any).sourceUrl = `https://www.imdb.com/title/${movie.imdbID}/`;
+          }
+          
+          return { ...project, ...updates };
         }
       } catch (error) {
         console.error(`Failed to get poster for ${cleanTitle}:`, error);
