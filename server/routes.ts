@@ -7,7 +7,7 @@ import type { Profile } from "@shared/schema";
 import { crawlUrl, normalizeUrl, hashUrl } from "./services/crawler";
 import { searchWithPerplexity } from "./services/perplexity";
 import { synthesizeProfile } from "./services/gemini";
-import { enrichProjectsWithPosters } from "./services/omdb";
+import { enrichProjectsWithPosters } from "./services/tmdb";
 import { fetchChannelVideos, formatYouTubeDate } from "./services/youtube";
 import { getVimeoThumbnail, isVimeoUrl, fetchVimeoUserVideos, formatVimeoDate, VimeoVideo } from "./services/vimeo";
 
@@ -54,8 +54,8 @@ export async function registerRoutes(
       console.log("Synthesizing with Gemini...");
       const synthesisResult = await synthesizeProfile(crawledData, enrichmentData);
 
-      // Step 4: Enrich projects with OMDB posters
-      console.log("Enriching with OMDB posters...");
+      // Step 4: Enrich projects with TMDB posters
+      console.log("Enriching with TMDB posters...");
       const enrichedProjects = await enrichProjectsWithPosters(synthesisResult.projects);
 
       // Step 5: Fetch YouTube videos if channel URL exists
