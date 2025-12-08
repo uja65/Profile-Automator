@@ -64,7 +64,7 @@ export async function fetchChannelVideos(channelUrl: string): Promise<YouTubeVid
       );
 
       if (searchResponse.data.items?.length > 0) {
-        channelId = searchResponse.data.items[0].snippet.channelId;
+        channelId = searchResponse.data.items[0].id.channelId;
       } else {
         console.log("Could not find channel for:", channelIdentifier);
         return [];
