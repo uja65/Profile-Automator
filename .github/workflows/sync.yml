@@ -1,0 +1,19 @@
+name: Sync to Mirror Repo
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo A
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Push to Repo B
+        run: |
+          git remote add mirror https://github.com/Lunim-Corporate/ai-profile-builder.git
+          git push mirror main --force
