@@ -121,7 +121,6 @@ npm start
 2. Enter a URL (IMDb page, portfolio website, social media profile)
 3. Wait for the AI to crawl, aggregate, and synthesize the profile
 4. View the generated profile with projects and media
-5. Edit profile picture or project covers as needed
 
 ## Tech Stack
 
